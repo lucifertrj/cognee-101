@@ -38,6 +38,9 @@ docker run --rm --env-file .env cognee-sandbox recall "your question here"
 docker run --rm --env-file .env cognee-sandbox both
 ```
 
+![Uploading Screenshot 2026-09-04 at 20.22.48.png…]()
+
+
 `remember()`/`recall()` route to Cognee Cloud over HTTPS. 
 
 ## 4. Connect Claude Code to the same memory
@@ -58,5 +61,8 @@ COGNEE_BASE_URL="https://your-tenant.aws.cognee.ai"
 COGNEE_API_KEY="your-api-key"
 EOF
 ```
+<img width="1408" height="213" alt="Screenshot 2026-09-04 at 20 19 35" src="https://github.com/user-attachments/assets/93513515-1fc1-43fb-b2dc-1d77dc125623" />
 
 Launch `claude` — you should see "Cognee Memory Connected". The plugin reads/writes the same `agent_sessions` dataset (via session hooks, no manual API calls), so anything the sandbox stored is recallable inside Claude Code, and anything Claude Code learns syncs back on `/exit`.
+
+<img width="798" height="599" alt="Screenshot 2026-09-04 at 20 20 17" src="https://github.com/user-attachments/assets/bff8aa0c-78c2-4afc-a476-3c930467047f" />
