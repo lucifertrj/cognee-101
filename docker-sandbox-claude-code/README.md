@@ -37,9 +37,7 @@ docker run --rm --env-file .env cognee-sandbox recall "your question here"
 # both in one process
 docker run --rm --env-file .env cognee-sandbox both
 ```
-
-![Uploading Screenshot 2026-09-04 at 20.22.48.png…]()
-
+<img width="1416" height="770" alt="Screenshot 2026-09-04 at 20 22 48" src="https://github.com/user-attachments/assets/5bf5e319-875e-457b-89ef-6461e423751f" />
 
 `remember()`/`recall()` route to Cognee Cloud over HTTPS. 
 
