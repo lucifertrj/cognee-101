@@ -1,66 +1,81 @@
-# Docker, Cognee, and Claude Code: Memory Sandbox Setup
+# Docker Sandbox + Cognee Brain + Strands Agents Harness
+
+Build a company brain for your Agent Harness using Cognee for memory, Strands Agents for the Harness, and Docker Sandboxes for isolated execution.
+
+- [agent.py](agent.py) — Strands agent: `remember`/`recall` (Cognee) + `market_data`/`price_alert` (yfinance)
+- [flow.md](flow.md) — architecture
 
 ## Prerequisites
 
-- Docker Desktop running
-- A Cognee Cloud tenant (URL + API key)
+- [Docker Sandboxes](https://docs.docker.com/ai/sandboxes/install/) (`sbx`)
+- A Cognee Cloud tenant (URL + API key) and an Anthropic API key
 
-## 1. Configure credentials
+## Installation & Setup
 
-`.env` in this directory:
-
-```
-COGNEE_BASE_URL=https://your-tenant.aws.cognee.ai
-COGNEE_API_KEY=your-api-key
-```
-
-## 2. Build the sandbox image
+Install [Docker Sandboxes](https://docs.docker.com/ai/sandboxes/install/) and run all commands from this project directory.
 
 ```bash
-docker build -f Dockerfile.sandbox -t cognee-sandbox .
+brew install docker/tap/sbx
+sbx version
 ```
 
-A stateless `python:3.12-slim` container with just the `cognee` package — no local LLM, no local graph DB.
-
-## 3. Store and recall memory
-
-Each `docker run` is a fresh, disposable container with no shared state
-between runs — only Cognee Cloud connects them.
+Copy the env template and fill in your Cognee tenant (URL, API key, dataset) and Anthropic API key.
 
 ```bash
-# store facts/data using remember() function
-docker run --rm --env-file .env cognee-sandbox remember
-
-# recall, in a separate container, with your own question
-docker run --rm --env-file .env cognee-sandbox recall "your question here"
-
-# both in one process
-docker run --rm --env-file .env cognee-sandbox both
+cp -n .env.example .env
 ```
-<img width="1416" height="770" alt="Screenshot 2026-09-04 at 20 22 48" src="https://github.com/user-attachments/assets/5bf5e319-875e-457b-89ef-6461e423751f" />
 
-`remember()`/`recall()` route to Cognee Cloud over HTTPS. 
+## Set the network policy and start Sandbox
 
-## 4. Connect Claude Code to the same memory
-
-Install the plugin:
+Set the global network policy (`Balanced`), then allow your Cognee tenant and Yahoo Finance.
 
 ```bash
-claude plugin marketplace add topoteretes/cognee-integrations
-claude plugin install cognee-memory@cognee
+sbx policy init balanced
+sbx policy allow network '*.aws.cognee.ai,query1.finance.yahoo.com,query2.finance.yahoo.com,fc.yahoo.com'
 ```
 
-Point it at the same tenant:
+Start the Claude Code sandbox and `/login`, then install dependencies with `uv`.
 
 ```bash
-mkdir -p ~/.cognee
-cat >> ~/.cognee/.env <<'EOF'
-COGNEE_BASE_URL="https://your-tenant.aws.cognee.ai"
-COGNEE_API_KEY="your-api-key"
-EOF
+sbx run --name cognee-agent claude "$PWD"
+sbx exec -w "$PWD" cognee-agent bash -lc 'uv venv .venv; uv pip install --python .venv/bin/python -r requirements.txt'
 ```
-<img width="1408" height="213" alt="Screenshot 2026-09-04 at 20 19 35" src="https://github.com/user-attachments/assets/93513515-1fc1-43fb-b2dc-1d77dc125623" />
 
-Launch `claude` — you should see "Cognee Memory Connected". The plugin reads/writes the same `agent_sessions` dataset (via session hooks, no manual API calls), so anything the sandbox stored is recallable inside Claude Code, and anything Claude Code learns syncs back on `/exit`.
+## Run the Agent Harness
 
-<img width="798" height="599" alt="Screenshot 2026-09-04 at 20 20 17" src="https://github.com/user-attachments/assets/bff8aa0c-78c2-4afc-a476-3c930467047f" />
+1. Pull a live market snapshot to confirm the finance tool works.
+
+```bash
+sbx exec -w "$PWD" cognee-agent .venv/bin/python agent.py ask 'Use market_data for AAPL and report its last price and 52-week high.'
+```
+
+2. Save an investment thesis to Cognee Brain memory (to remember)
+
+```bash
+sbx exec -w "$PWD" cognee-agent .venv/bin/python agent.py ask 'Remember my confirmed AAPL watchlist: buy target $320, trim target $345, thesis is the iPhone upgrade cycle is largely priced in above $345.'
+```
+
+3. A fresh process recalls those targets and checks them against a live price — memory + finance together.
+
+```bash
+sbx exec -w "$PWD" cognee-agent .venv/bin/python agent.py ask 'Recall my AAPL watchlist targets, then use price_alert to check AAPL against them and give me a buy/trim/hold call.'
+```
+
+4. Read from Memory (recall)
+
+> Note: 
+
+- Read the stored memory directly, no model. `recall` is a plain memory lookup (no LLM, no tokens); 
+- `ask` runs the agent, which reasons and calls tools like `recall` and `price_alert` on its own.
+
+```bash
+sbx exec -w "$PWD" cognee-agent .venv/bin/python agent.py recall 'AAPL watchlist buy and trim targets'
+```
+
+5. Optional: Use Claude Code to ask the question
+
+Now just talk to Claude Code in the sandbox — it reads/writes this memory on its own, on your subscription (no API key).
+
+```text
+Am I near my AAPL watchlist targets?
+```

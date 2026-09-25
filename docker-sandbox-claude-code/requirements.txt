@@ -1,0 +1,4 @@
+cognee>=1.0,<2
+strands-agents[anthropic]
+yfinance>=0.2,<1
+python-dotenv>=1,<2
